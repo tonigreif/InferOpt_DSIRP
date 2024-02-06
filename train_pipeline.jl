@@ -1,0 +1,159 @@
+using ArgParse
+using Base.Threads
+
+function parse_commandline()
+    s = ArgParseSettings()
+
+    @add_arg_table s begin
+        "--instance_id"
+            arg_type = String 
+            required = true 
+            help = "Instance ID"
+        "--paradigm"
+            arg_type = String
+            help = "Learning paradigm (choose from: 'baty', 'sampling', 'dagger')" 
+            default = "dagger"
+            range_tester = in(["baty", "sampling", "dagger"])
+        "--pipeline_epochs"
+            arg_type = Int 
+            help = "Number of epochs for the entire pipeline; the pipeline is evaluated each epoch"
+            default = 150
+        "--update_epochs"
+            arg_type = Int
+            help = "Number of epochs for updating the statistical model"
+            default = 50
+        "--dagger_iterations"
+            arg_type = Int 
+            help = "Number of dagger iterations (only applicable if --paradigm is set to 'dagger')"
+            default = 20
+        "--retain_epochs"
+            arg_type = Int 
+            help = "Number of past pipeline epochs from which to retain samples (only applicable if --paradigm is set to 'dagger')"
+            default = 10
+        "--subsampling_proportion"
+            arg_type = Float64 
+            help = "Proportion for subsampling samples from each retained pipeline epoch (only applicable if --paradigm is set to 'dagger')"
+            default = 0.5
+        "--early_stopping"
+            arg_type = Int 
+            help = "Number of unsuccessful pipeline epochs before stopping training"
+            default = 5
+        "--num_scenarios"
+            arg_type = Int 
+            help = "Number of demand scenarios to sample for generating samples of the training set" 
+            default = 5
+        "--lr_start"
+            arg_type = Float64 
+            help = "Learning rate at the start" 
+            default = 0.01
+        "--fyl_samples"
+            arg_type = Int 
+            help = "Number of samples to calculate Fenchel-Young-Loss (FYL)" 
+            default = 5
+        "--fyl_epsilon"
+            arg_type = Float64 
+            help = "Epsilon to calculate Fenchel-Young-Loss (FYL)" 
+            default = 20.0
+        "--look_ahead"
+            arg_type = Int 
+            help = "Periods to look ahead" 
+            default = 6
+        "--demand_quantiles"
+            arg_type = Vector{Float64} 
+            help = "Demand quantiles for the statistical model" 
+            default = [0.01, 0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 0.99]
+        "--shortage_penalty"
+            arg_type = Int 
+            help = "Shortage penalty (default: 200). Multiplier for calculating stock-out costs per unit from the holding cost"
+            default = 200
+        "--load_model"
+            arg_type = String 
+            default = "none"
+            help = "Model ID to load a pre-trained model (default: 'none')"
+        "--create_model"
+            arg_type = Bool
+            default = true
+            help = "Indicates whether to create a new model or resume training with the loaded model (if --load_model is set to 'none', this option is always true)"
+        "--milp_solver"
+            arg_type = String
+            help = "Solver for solving MILP problems"
+            default = "gurobi"
+            range_tester = in(["gurobi"])
+    end
+
+    return parse_args(s)
+end
+
+args = parse_commandline()
+sys_cpus = length(Sys.cpu_info())
+num_threads = nthreads()
+
+if args["paradigm"]=="dagger" 
+    include("src/pipeline_dagger.jl");
+    settings = dagger_settings(
+        nb_outer_epochs = args["pipeline_epochs"],
+        nb_inner_epochs = args["update_epochs"],
+        nb_iterations = args["dagger_iterations"],
+        nb_keep_epochs = args["retain_epochs"],
+        portion_keep_epochs = args["subsampling_proportion"],
+        early_stopping = args["early_stopping"],
+        nb_scenarios = args["num_scenarios"],
+        lr_start = args["lr_start"],
+        fyl_samples = args["fyl_samples"],
+        fyl_epsilon = args["fyl_epsilon"],
+        look_ahead = args["look_ahead"],
+        demand_quantiles = args["demand_quantiles"],
+        load_model = args["load_model"],
+        create_model = args["create_model"],
+        sys_cpus = sys_cpus,
+        num_threads = num_threads,
+        milp_solver = args["milp_solver"]
+    )
+    
+elseif args["paradigm"]=="sampling" 
+    include("src/pipeline_sampling.jl");
+    settings = sampling_settings(
+        nb_outer_epochs = args["pipeline_epochs"],
+        nb_inner_epochs = args["update_epochs"],
+        early_stopping = args["early_stopping"],
+        nb_scenarios = args["num_scenarios"],
+        lr_start = args["lr_start"],
+        fyl_samples = args["fyl_samples"],
+        fyl_epsilon = args["fyl_epsilon"],
+        look_ahead = args["look_ahead"],
+        demand_quantiles = args["demand_quantiles"],
+        load_model = args["load_model"],
+        create_model = args["create_model"],
+        sys_cpus = sys_cpus,
+        num_threads = num_threads,
+        milp_solver = args["milp_solver"]
+    )
+    
+elseif args["paradigm"]=="baty" 
+    include("src/pipeline_baty.jl");
+    settings = baty_settings(
+        nb_outer_epochs = args["pipeline_epochs"],
+        nb_inner_epochs = args["update_epochs"],
+        early_stopping = args["early_stopping"],
+        nb_scenarios = args["num_scenarios"],
+        lr_start = args["lr_start"],
+        fyl_samples = args["fyl_samples"],
+        fyl_epsilon = args["fyl_epsilon"],
+        look_ahead = args["look_ahead"],
+        demand_quantiles = args["demand_quantiles"],
+        load_model = args["load_model"],
+        create_model = args["create_model"],
+        sys_cpus = sys_cpus,
+        num_threads = num_threads,
+        milp_solver = args["milp_solver"]
+    )
+    
+end
+
+println(settings)   
+
+patterns::Vector{String} = [split(args["instance_id"], "-")[1]]
+penalties::Vector{Int} = [args["shortage_penalty"]]
+instances::Vector{String} = [args["instance_id"]]
+
+run_pipeline(patterns, penalties, instances, settings)
