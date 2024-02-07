@@ -6,7 +6,7 @@ if length(ARGS)>0
 end
 
 using Pkg
-Pkg.add(url = "https://github.com/axelparmentier/InferOpt.jl.git", rev = "generalized-maximizer")
+Pkg.add("InferOpt")
 Pkg.add("ProgressMeter")
 Pkg.add("Flux")
 Pkg.add("Gurobi")
