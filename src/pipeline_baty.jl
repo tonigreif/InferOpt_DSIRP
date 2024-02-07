@@ -72,7 +72,7 @@ function run_pipeline(patterns::Vector{String}, penalties::Vector{Int}, instance
     end
     # Create model_id and initalize solution log
     if create_model
-        model_id = string(now())
+        model_id = Dates.format(now(), "yymmdd_HHMMSSs")
         solution = Dict{String, Dict{String, Any}}()
         solution[co_problem] = Dict()
         solution[co_problem]["settings"] = settings

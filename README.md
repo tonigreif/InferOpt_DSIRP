@@ -39,7 +39,7 @@ Here's an example workflow to demonstrate how to use our approach:
 
 > :warning: Our setting typically uses more epochs and scenarios, but be aware that this leads to long training times.
 
-3. `julia evaluate_pipeline.jl --solution_path dagger/normal/penalty_200/normal-10_202212-1314-0055-0af411a5-e0e5-486d-9cbf-13fa3c8ece0a/2024-02-06T15:28:16.618_solutions.json --evaluation_horizon 6`
+3. `julia evaluate_pipeline.jl --solution_path dagger/normal/penalty_200/normal-10_202212-1314-0055-0af411a5-e0e5-486d-9cbf-13fa3c8ece0a/240206_152816618_solutions.json --evaluation_horizon 6`
 
 > :warning: Ensure to update the solution_path parameter according to your specific directory structure.
 
