@@ -1,6 +1,8 @@
 using ArgParse
 using Base.Threads
 
+@info "Starting pipeline training..."
+
 function parse_commandline()
     s = ArgParseSettings()
 
@@ -156,4 +158,23 @@ patterns::Vector{String} = [split(args["instance_id"], "-")[1]]
 penalties::Vector{Int} = [args["shortage_penalty"]]
 instances::Vector{String} = [args["instance_id"]]
 
-run_pipeline(patterns, penalties, instances, settings)
+solution_path = run_pipeline(patterns, penalties, instances, settings)
+@info "Solution path: $(solution_path)"
+
+@info "Continue to pipeline evaluation? Please enter 'yes' or 'no'."
+while true
+    evaluate_pipeline = readline()
+
+    if evaluate_pipeline == "yes"
+        println("Number of periods to evaluate?")
+        evaluation_horizon = readline()
+        run(`julia evaluate_pipeline.jl --solution_path=$(solution_path) --evaluation_horizon=$(evaluation_horizon)`)
+        break
+    elseif evaluate_pipeline == "no"
+        println("Evaluation cancelled.")
+        break
+    else
+        println("Invalid input. Please enter 'yes' or 'no'.")
+    end
+end
+

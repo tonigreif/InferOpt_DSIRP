@@ -14,6 +14,8 @@ include("src/stat_model.jl")
 include("src/evaluation.jl")
 include("src/pctsp.jl")
 
+@info "Starting pipeline evaluation..."
+
 function parse_commandline()
     s = ArgParseSettings()
 
@@ -44,7 +46,6 @@ readInstance("instances/"*instance_id*".json", pattern, instance; penalty_inv=pe
 max_evaluation_horizon = maximum([length(evaluation_demand) for evaluation_demand in values(instance.demands_test)])
 args["evaluation_horizon"] <= max_evaluation_horizon || error("Evaluation horizon exceeds the number of samples in the evaluation demand of the instance.")
 
-@info "Starting pipeline evaluation..."
 @info "Solution path: $(args["solution_path"])"
 @info "Evaluation horizon: $(args["evaluation_horizon"]) periods"  
 
@@ -71,10 +72,10 @@ routing_costs_rounded = round(routing_costs, digits=2)
 stockout_costs_rounded = round(stockout_costs, digits=2)
 holding_costs_rounded = round(holding_costs, digits=2)
 total_costs_rounded = round(total_costs, digits=2)
-@info "-----"
+println("-----")
 @info "Routing costs: $routing_costs_rounded"
 @info "Stock-out costs: $stockout_costs_rounded"
 @info "Holding costs: $holding_costs_rounded"
-@info "-----"
+println("-----")
 @info "Total costs: $total_costs_rounded"
 @info "Inference time: $inference_time seconds"
