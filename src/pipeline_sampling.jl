@@ -246,4 +246,6 @@ function run_pipeline(patterns::Vector{String}, penalties::Vector{Int}, instance
             break
         end
     end
+
+    return joinpath(splitpath(solutions_folder)[3:end])*"/"*model_id*"_solutions.json"
 end
