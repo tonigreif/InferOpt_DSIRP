@@ -51,7 +51,7 @@ We strive to continuously update this repository with improvements and enhanceme
 
 If you use our repository in your research, please cite the following paper:
 
-> [Combinatorial Optimization and Machine Learning for Dynamic Inventory Routing](https://arxiv.org/abs/) - Toni Greif, Louis Bouvier, Christoph M. Flath, Axel Parmentier, Sonja U. K. Rohmer, Thibaut Vidal (2024)
+> [Combinatorial Optimization and Machine Learning for Dynamic Inventory Routing](https://arxiv.org/abs/) - Toni Greif, Louis Bouvier, Christoph M. Flath, Axel Parmentier, Sonja U. K. Rohmer and Thibaut Vidal (2024)
 
 ## Related Work and Packages
 
