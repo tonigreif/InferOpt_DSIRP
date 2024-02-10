@@ -125,14 +125,14 @@ function run_benchmark(penalty_inv::Int, instance_id::String; demand="test", pol
     @info "Evaluation horizon: $(evaluation_horizon) periods"
 
     pattern = convert(String, split(instance_id, "-")[1])
-    (policy in ["offline", "mean", "saa_1"]) || error("Selected benchmark not implemented.")
+    (policy in ["anticipative", "mean", "saa_1"]) || error("Selected benchmark not implemented.")
     
     instance = IRPInstance()
     readInstance("instances/"*instance_id*".json", pattern, instance; penalty_inv=penalty_inv)
     
     benchmark_start = now()
   
-    if policy=="offline"
+    if policy=="anticipative"
         problem = IRPProblem()
         indices = IRPIndices()
         createProblem(problem, instance; horizon=evaluation_horizon)
