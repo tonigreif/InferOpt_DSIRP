@@ -1,8 +1,6 @@
 using ArgParse
 using Base.Threads
 
-@info "Starting pipeline training..."
-
 function parse_commandline()
     s = ArgParseSettings()
 
@@ -83,9 +81,15 @@ function parse_commandline()
             range_tester = in(["gurobi"])
     end
 
-    return parse_args(s)
+    try
+        return parse_args(s)
+    catch err
+        error("Error parsing command-line arguments: $err")
+    end
 end
 
+
+@info "Starting pipeline training..."
 args = parse_commandline()
 sys_cpus = length(Sys.cpu_info())
 num_threads = nthreads()
@@ -111,7 +115,6 @@ if args["paradigm"]=="dagger"
         num_threads = num_threads,
         milp_solver = args["milp_solver"]
     )
-    
 elseif args["paradigm"]=="sampling" 
     include("src/pipeline_sampling.jl");
     settings = sampling_settings(
@@ -130,7 +133,6 @@ elseif args["paradigm"]=="sampling"
         num_threads = num_threads,
         milp_solver = args["milp_solver"]
     )
-    
 elseif args["paradigm"]=="baty" 
     include("src/pipeline_baty.jl");
     settings = baty_settings(
@@ -149,18 +151,15 @@ elseif args["paradigm"]=="baty"
         num_threads = num_threads,
         milp_solver = args["milp_solver"]
     )
-    
 end
 
 println(settings)   
-
 patterns::Vector{String} = [split(args["instance_id"], "-")[1]]
 penalties::Vector{Int} = [args["shortage_penalty"]]
 instances::Vector{String} = [args["instance_id"]]
 
 solution_path = run_pipeline(patterns, penalties, instances, settings)
 @info "Solution path: $(solution_path)"
-
 @info "Continue to pipeline evaluation? Please enter 'yes' or 'no'."
 while true
     evaluate_pipeline = readline()
@@ -177,4 +176,3 @@ while true
         println("Invalid input. Please enter 'yes' or 'no'.")
     end
 end
-
