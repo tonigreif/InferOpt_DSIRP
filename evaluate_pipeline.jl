@@ -1,20 +1,4 @@
 using ArgParse
-using Flux
-using Gurobi
-using JuMP
-using Distributions
-using Statistics
-using JSON
-using Dates
-using BSON
-include("src/auxiliar.jl")
-include("src/sirp_model.jl")
-include("src/sirp_solver.jl")
-include("src/stat_model.jl")
-include("src/evaluation.jl")
-include("src/pctsp.jl")
-
-@info "Starting pipeline evaluation..."
 
 function parse_commandline()
     s = ArgParseSettings()
@@ -30,52 +14,76 @@ function parse_commandline()
             help = "Number of periods to evaluate"
     end
 
-    return parse_args(s)
+    try
+        return parse_args(s)
+    catch err
+        error("Error parsing command-line arguments: $err")
+    end
 end 
 
-args = parse_commandline()
+using Flux
+using Gurobi
+using JuMP
+using Distributions
+using Statistics
+using JSON
+using Dates
+using BSON
+include("src/auxiliar.jl")
+include("src/sirp_model.jl")
+include("src/sirp_solver.jl")
+include("src/stat_model.jl")
+include("src/evaluation_pipeline.jl")
+include("src/pctsp.jl")
 
-_, pattern, penalty, instance_id, _ = split(args["solution_path"], "/")
-pattern = convert(String, pattern)
-penalty_inv = parse(Int, split(penalty, "_")[2])
-instance_id = convert(String, instance_id)
+function main()
+    @info "Starting pipeline evaluation..."
+    args = parse_commandline()
 
-instance = IRPInstance()
-readInstance("instances/"*instance_id*".json", pattern, instance; penalty_inv=penalty_inv);
+    _, pattern, penalty, instance_id, _ = split(args["solution_path"], "/")
+    pattern = convert(String, pattern)
+    penalty_inv = parse(Int, split(penalty, "_")[2])
+    instance_id = convert(String, instance_id)
 
-max_evaluation_horizon = maximum([length(evaluation_demand) for evaluation_demand in values(instance.demands_test)])
-args["evaluation_horizon"] <= max_evaluation_horizon || error("Evaluation horizon exceeds the number of samples in the evaluation demand of the instance.")
+    instance = IRPInstance()
+    readInstance("instances/"*instance_id*".json", pattern, instance; penalty_inv=penalty_inv);
 
-@info "Solution path: $(args["solution_path"])"
-@info "Evaluation horizon: $(args["evaluation_horizon"]) periods"  
+    max_evaluation_horizon = maximum([length(evaluation_demand) for evaluation_demand in values(instance.demands_test)])
+    args["evaluation_horizon"] <= max_evaluation_horizon || error("Evaluation horizon exceeds the number of samples in the evaluation demand of the instance.")
 
-horizon = args["evaluation_horizon"]
-data = JSON.parsefile(realpath("training/solutions/"*args["solution_path"]))
+    @info "Solution path: $(args["solution_path"])"
+    @info "Evaluation horizon: $(args["evaluation_horizon"]) periods"  
 
-demand_quantiles = FloatFromAny(data["pctsp"]["settings"]["demand_quantiles"])
-look_ahead = data["pctsp"]["settings"]["look_ahead"]
+    horizon = args["evaluation_horizon"]
+    data = JSON.parsefile(realpath("training/solutions/"*args["solution_path"]))
 
-weights = data["pctsp"][string(data["pctsp"]["best_iteration"])]["weights"]
+    demand_quantiles = FloatFromAny(data["pctsp"]["settings"]["demand_quantiles"])
+    look_ahead = data["pctsp"]["settings"]["look_ahead"]
 
-φ_w, _ = build_stat_model(demand_quantiles, look_ahead; nb_features=instance.nb_features, weights=weights);
+    weights = data["pctsp"][string(data["pctsp"]["best_iteration"])]["weights"]
 
-benchmark_start = now()
-x_val, holding_costs, stockout_costs, routing_costs, _ = evaluate_pctsp(φ_w, instance; demand="test", 
-    demand_quantiles=demand_quantiles, look_ahead=look_ahead, evaluation_horizon=horizon)
+    φ_w, _ = build_stat_model(demand_quantiles, look_ahead; nb_features=instance.nb_features, weights=weights);
 
-total_costs = routing_costs + stockout_costs + holding_costs
+    benchmark_start = now()
+    x_val, holding_costs, stockout_costs, routing_costs, _ = evaluate_pctsp(φ_w, instance; demand="test", 
+        demand_quantiles=demand_quantiles, look_ahead=look_ahead, evaluation_horizon=horizon)
 
-inference_time = (now() - benchmark_start) / Millisecond(1000)
+    total_costs = routing_costs + stockout_costs + holding_costs
 
-# Round costs to two decimal places for printing
-routing_costs_rounded = round(routing_costs, digits=2)
-stockout_costs_rounded = round(stockout_costs, digits=2)
-holding_costs_rounded = round(holding_costs, digits=2)
-total_costs_rounded = round(total_costs, digits=2)
-println("-----")
-@info "Routing costs: $routing_costs_rounded"
-@info "Stock-out costs: $stockout_costs_rounded"
-@info "Holding costs: $holding_costs_rounded"
-println("-----")
-@info "Total costs: $total_costs_rounded"
-@info "Inference time: $inference_time seconds"
+    inference_time = (now() - benchmark_start) / Millisecond(1000)
+
+    # Round costs to two decimal places for printing
+    routing_costs_rounded = round(routing_costs, digits=2)
+    stockout_costs_rounded = round(stockout_costs, digits=2)
+    holding_costs_rounded = round(holding_costs, digits=2)
+    total_costs_rounded = round(total_costs, digits=2)
+    println("-----")
+    @info "Routing costs: $routing_costs_rounded"
+    @info "Stock-out costs: $stockout_costs_rounded"
+    @info "Holding costs: $holding_costs_rounded"
+    println("-----")
+    @info "Total costs: $total_costs_rounded"
+    @info "Inference time: $inference_time seconds"
+end
+
+main() 
