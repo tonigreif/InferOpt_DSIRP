@@ -31,6 +31,11 @@ To get started with our algorithm, ensure you have Julia Version 1.8.5 installed
 
    `julia evaluate_pipeline.jl`
 
+6. (Optional) **Evaluate Benchmark:**
+
+   `julia evaluate_benchmark.jl`
+   
+
 ### Example
 Here's an example workflow to demonstrate how to use our approach:
 
@@ -43,13 +48,12 @@ Here's an example workflow to demonstrate how to use our approach:
 
 > :warning: Ensure to update the solution_path parameter according to your specific directory structure.
 
-Optional:
-    `julia evaluate_benchmark.jl --instance_id normal-10_202212-1314-0055-0af411a5-e0e5-486d-9cbf-13fa3c8ece0a --demand_type test --policy mean --evaluation_horizon 6`
+4. `julia evaluate_benchmark.jl --instance_id normal-10_202212-1314-0055-0af411a5-e0e5-486d-9cbf-13fa3c8ece0a --demand_type test --policy mean --evaluation_horizon 6`
 
 
 ## Remark
 
-We strive to continuously update this repository with improvements and enhancements. In particular, we aim to incorporate benchmark policies and evaluations in the future. Your feedback and contributions are greatly appreciated as we work towards enhancing our solution approach.
+We strive to continuously update this repository with improvements and enhancements. In particular, we aim to incorporate the SAA-3 benchmark policy. Your feedback and contributions are greatly appreciated as we work towards enhancing our solution approach.
 
 ## Citation
 
