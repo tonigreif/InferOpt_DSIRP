@@ -43,6 +43,10 @@ Here's an example workflow to demonstrate how to use our approach:
 
 > :warning: Ensure to update the solution_path parameter according to your specific directory structure.
 
+Optional:
+    `julia evaluate_benchmark.jl --instance_id normal-10_202212-1314-0055-0af411a5-e0e5-486d-9cbf-13fa3c8ece0a --demand_type test --policy mean --evaluation_horizon 6`
+
+
 ## Remark
 
 We strive to continuously update this repository with improvements and enhancements. In particular, we aim to incorporate benchmark policies and evaluations in the future. Your feedback and contributions are greatly appreciated as we work towards enhancing our solution approach.
@@ -51,7 +55,7 @@ We strive to continuously update this repository with improvements and enhanceme
 
 If you use our repository in your research, please cite the following paper:
 
-> [Combinatorial Optimization and Machine Learning for Dynamic Inventory Routing](https://arxiv.org/abs/2402.04463) - Toni Greif, Louis Bouvier, Christoph M. Flath, Axel Parmentier, Sonja U. K. Rohmer and Thibaut Vidal (2024)
+> [Combinatorial Optimization and Machine Learning for Dynamic Inventory Routing](https://arxiv.org/abs/) - Toni Greif, Louis Bouvier, Christoph M. Flath, Axel Parmentier, Sonja U. K. Rohmer and Thibaut Vidal (2024)
 
 ## Related Work and Packages
 
