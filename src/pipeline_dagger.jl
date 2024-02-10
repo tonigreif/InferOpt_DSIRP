@@ -13,7 +13,7 @@ include("auxiliar.jl")
 include("sirp_model.jl")
 include("sirp_solver.jl")
 include("stat_model.jl")
-include("evaluation.jl")
+include("evaluation_pipeline.jl")
 include("pctsp.jl")
 
 
