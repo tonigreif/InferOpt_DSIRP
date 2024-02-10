@@ -1,9 +1,9 @@
 #using ProgressMeter
 using Gurobi
 using JuMP
-#using Distributions
+using Distributions
 using Statistics
-#using JSON
+using JSON
 using Dates
 #using Parameters
 using BSON: @save, @load
@@ -14,8 +14,7 @@ include("sirp_solver.jl")
 
 function evaluate_rolling_horizon(instance::IRPInstance; demand="test", scenario=1, method="mean", horizon=10, roll_horizon=6)
     
-    pattern = convert(String, split(instance_id, "-")[1])
-    if (pattern=="contextual") & (method=="saa_1")
+    if (instance.nb_features>0) & (method=="saa_1")
         method = "saa_1_nearest"
     end
     
