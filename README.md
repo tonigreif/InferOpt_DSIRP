@@ -53,7 +53,7 @@ Here's an example workflow to demonstrate how to use our approach:
 
 ## Remark
 
-We strive to continuously update this repository with improvements and enhancements. In particular, we aim to incorporate the SAA-3 benchmark policy. Your feedback and contributions are greatly appreciated as we work towards enhancing our solution approach.
+We strive to continuously update this repository with improvements and enhancements. Your feedback and contributions are greatly appreciated as we work towards enhancing our solution approach.
 
 ## Citation
 
