@@ -19,7 +19,7 @@ function parse_commandline()
             range_tester = in(["eval", "test"])
         "--policy"
             arg_type = String
-            help = "Policy (choose from: 'anticipative', 'mean', 'saa_1')" 
+            help = "Policy (choose from: 'anticipative', 'mean', 'saa_1', 'saa_3')" 
             default = "mean"
             range_tester = in(["anticipative", "mean", "saa_1"])
         "--evaluation_horizon"
