@@ -1,16 +1,15 @@
-#using ProgressMeter
 using Gurobi
 using JuMP
 using Distributions
 using Statistics
 using JSON
 using Dates
-#using Parameters
 using BSON: @save, @load
 
 include("auxiliar.jl")
 include("sirp_model.jl")
 include("sirp_solver.jl")
+include("saa_approx.jl")
 
 function evaluate_rolling_horizon(instance::IRPInstance; demand="test", scenario=1, method="mean", horizon=10, roll_horizon=6)
     
@@ -73,9 +72,6 @@ function evaluate_rolling_horizon(instance::IRPInstance; demand="test", scenario
                                         for sample in samples_hist[i]], by=x->x[2])][1] for k in 1:roll_horizon] for i in roll_indices.V_cus))
             end
             roll_problem.scenarios = 1
-        elseif method == "ets"
-            roll_problem.demands = Dict(1 => Dict(i => ets_forecast(demands_hist[i]) for i in roll_indices.V_cus))
-            roll_problem.scenarios = 1
         else
             error("Selected method not implemented.")
         end
@@ -125,7 +121,7 @@ function run_benchmark(penalty_inv::Int, instance_id::String; demand="test", pol
     @info "Evaluation horizon: $(evaluation_horizon) periods"
 
     pattern = convert(String, split(instance_id, "-")[1])
-    (policy in ["anticipative", "mean", "saa_1"]) || error("Selected benchmark not implemented.")
+    (policy in ["anticipative", "mean", "saa_1", "saa_3"]) || error("Selected benchmark not implemented.")
     
     instance = IRPInstance()
     readInstance("instances/"*instance_id*".json", pattern, instance; penalty_inv=penalty_inv)
@@ -143,6 +139,9 @@ function run_benchmark(penalty_inv::Int, instance_id::String; demand="test", pol
             problem.demands = Dict(1 => deepcopy(instance.demands_eval))
         end 
         _, stockout_costs, holding_costs, routing_costs, _ = sirp_solver(problem, indices; obj=true);
+    elseif policy=="saa_3"
+         _, holding_costs, stockout_costs, routing_costs = evaluate_saa(instance;
+            penalty_inv=penalty_inv, demand=demand, nb_scenarios=3, horizon=evaluation_horizon, roll_horizon=look_ahead, load_solution=nothing)     
     else
         _, holding_costs, stockout_costs, routing_costs, _ = evaluate_rolling_horizon(instance;
             demand=demand, method=policy, horizon=evaluation_horizon, roll_horizon=look_ahead) 
