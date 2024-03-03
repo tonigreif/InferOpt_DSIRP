@@ -21,7 +21,7 @@ function parse_commandline()
             arg_type = String
             help = "Policy (choose from: 'anticipative', 'mean', 'saa_1', 'saa_3')" 
             default = "mean"
-            range_tester = in(["anticipative", "mean", "saa_1"])
+            range_tester = in(["anticipative", "mean", "saa_1", "saa_3"])
         "--evaluation_horizon"
             arg_type = Int 
             default = 10 
