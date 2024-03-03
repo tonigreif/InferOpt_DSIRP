@@ -141,7 +141,7 @@ function run_benchmark(penalty_inv::Int, instance_id::String; demand="test", pol
         _, stockout_costs, holding_costs, routing_costs, _ = sirp_solver(problem, indices; obj=true);
     elseif policy=="saa_3"
          _, holding_costs, stockout_costs, routing_costs = evaluate_saa(instance;
-            penalty_inv=penalty_inv, demand=demand, nb_scenarios=3, horizon=evaluation_horizon, roll_horizon=look_ahead, load_solution=nothing)     
+            penalty_inv=penalty_inv, demand=demand, nb_scenarios=3, horizon=evaluation_horizon, roll_horizon=look_ahead)     
     else
         _, holding_costs, stockout_costs, routing_costs, _ = evaluate_rolling_horizon(instance;
             demand=demand, method=policy, horizon=evaluation_horizon, roll_horizon=look_ahead) 
