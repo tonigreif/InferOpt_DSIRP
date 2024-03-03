@@ -12,7 +12,7 @@ include("sirp_solver.jl")
 include("subtours.jl")
 include("tsp.jl")
 
-function evaluate_saa(instance::IRPInstance; penalty_inv=200, demand="test", nb_scenarios=3, horizon=10, roll_horizon=6, load_solution=nothing)
+function evaluate_saa(instance::IRPInstance; penalty_inv=200, demand="test", nb_scenarios=3, horizon=10, roll_horizon=6, model_id=nothing)
     
     (demand in ["test"]) || error("Selected demand type not implemented for SAA-3.")
     
