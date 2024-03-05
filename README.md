@@ -16,7 +16,7 @@ We use a *Physics-informed Neural Network (PINN)* to capture the DSIRP's piecewi
 Our computational experiments are designed to facilitate comparisons with other approaches. We focus on simple settings, involving a single vehicle, single depot, single commodity, and an order-up-to policy. By thoroughly analyzing the strengths and limitations of our approach, we offer guidance to both practitioners and researchers operating in this field.
 
 ## Getting Started
-To get started with our algorithm, ensure you have Julia Version 1.8.5 installed. You can find more information about Julia on its main homepage at julialang.org. Follow the steps below:
+To get started with our algorithm, ensure you have Julia Version 1.8.5 and Gurobi Optimizer Version 11.0 installed. For additional details on Julia and Gurobi, please visit their official websites at julialang.org and gurobi.com, respectively. Follow the steps below:
 
 0. **Install Julia Version 1.8.5**   
 1. **Initialize Environment:**
