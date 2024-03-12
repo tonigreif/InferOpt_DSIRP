@@ -1,14 +1,5 @@
 using ProgressMeter
-using Gurobi
-using JuMP
-using Distributions
-using Statistics
-using JSON
-using Dates
 
-include("auxiliar.jl")
-include("sirp_model.jl")
-include("sirp_solver.jl")
 include("subtours.jl")
 include("tsp.jl")
 
