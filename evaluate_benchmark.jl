@@ -30,6 +30,15 @@ function parse_commandline()
             arg_type = Int 
             help = "Periods to look ahead" 
             default = 6
+        "--milp_solver"
+            arg_type = String
+            help = "Solver for solving MILP problems"
+            default = "gurobi"
+            range_tester = in(["gurobi", "highs"])
+        "--silent_solver"
+            arg_type = Bool
+            help = "Run solver in silent mode"
+            default = true
     end
 
     try
@@ -41,11 +50,9 @@ end
 
 include("src/evaluation_benchmark.jl");
 
-function main()
-    args = parse_commandline()
-    
-    run_benchmark(args["shortage_penalty"], args["instance_id"]; policy=args["policy"],
-    demand=args["demand_type"], evaluation_horizon=args["evaluation_horizon"], look_ahead=args["look_ahead"])
-end
+args = parse_commandline()
 
-main() 
+milp_builder = model_definition(;milp_solver=args["milp_solver"], silent=args["silent_solver"])
+
+run_benchmark(args["shortage_penalty"], args["instance_id"]; policy=args["policy"],
+demand=args["demand_type"], evaluation_horizon=args["evaluation_horizon"], look_ahead=args["look_ahead"])

@@ -26,6 +26,18 @@ function parse_commandline()
             arg_type = Int 
             help = "Number of dagger iterations (only applicable if --paradigm is set to 'dagger')"
             default = 20
+        "--alpha_0"
+            arg_type = Float64
+            help = "Initial alpha value for expert mixing (only applicable if --paradigm is set to 'dagger')"
+            default = 1.0
+        "--alpha_decay"
+            arg_type = Float64
+            help = "Alpha decay rate per iteration (only applicable if --paradigm is set to 'dagger')"
+            default = 0.05
+        "--alpha_min"
+            arg_type = Float64
+            help = "Minimum alpha value to retain expert guidance (only applicable if --paradigm is set to 'dagger')"
+            default = 0.1
         "--retain_epochs"
             arg_type = Int 
             help = "Number of past pipeline epochs from which to retain samples (only applicable if --paradigm is set to 'dagger')"
@@ -78,7 +90,11 @@ function parse_commandline()
             arg_type = String
             help = "Solver for solving MILP problems"
             default = "gurobi"
-            range_tester = in(["gurobi"])
+            range_tester = in(["gurobi", "highs"])
+        "--silent_solver"
+            arg_type = Bool
+            help = "Run solver in silent mode"
+            default = true
     end
 
     try
@@ -100,6 +116,9 @@ if args["paradigm"]=="dagger"
         nb_outer_epochs = args["pipeline_epochs"],
         nb_inner_epochs = args["update_epochs"],
         nb_iterations = args["dagger_iterations"],
+        alpha_0 = args["alpha_0"],
+        alpha_decay = args["alpha_decay"],
+        alpha_min = args["alpha_min"],
         nb_keep_epochs = args["retain_epochs"],
         portion_keep_epochs = args["subsampling_proportion"],
         early_stopping = args["early_stopping"],
@@ -158,6 +177,8 @@ patterns::Vector{String} = [split(args["instance_id"], "-")[1]]
 penalties::Vector{Int} = [args["shortage_penalty"]]
 instances::Vector{String} = [args["instance_id"]]
 
+milp_builder = model_definition(;milp_solver=args["milp_solver"], silent=args["silent_solver"])
+
 solution_path = run_pipeline(patterns, penalties, instances, settings)
 @info "Solution path: $(solution_path)"
 @info "Continue to pipeline evaluation? Please enter 'yes' or 'no'."
@@ -167,7 +188,7 @@ while true
     if evaluate_pipeline == "yes"
         println("Number of periods to evaluate?")
         evaluation_horizon = readline()
-        run(`julia evaluate_pipeline.jl --solution_path=$(solution_path) --evaluation_horizon=$(evaluation_horizon)`)
+        run(`julia evaluate_pipeline.jl --solution_path=$(solution_path) --evaluation_horizon=$(evaluation_horizon) --milp_solver=$(args["milp_solver"]) --silent_solver=$(args["silent_solver"])`)
         break
     elseif evaluate_pipeline == "no"
         println("Evaluation cancelled.")

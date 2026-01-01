@@ -12,6 +12,15 @@ function parse_commandline()
             arg_type = Int 
             default = 10 
             help = "Number of periods to evaluate"
+        "--milp_solver"
+            arg_type = String
+            help = "Solver for solving MILP problems"
+            default = "gurobi"
+            range_tester = in(["gurobi", "highs"])
+        "--silent_solver"
+            arg_type = Bool
+            help = "Run solver in silent mode"
+            default = true
     end
 
     try
@@ -23,6 +32,7 @@ end
 
 using Flux
 using Gurobi
+using HiGHS
 using JuMP
 using Distributions
 using Statistics
@@ -36,54 +46,53 @@ include("src/stat_model.jl")
 include("src/evaluation_pipeline.jl")
 include("src/pctsp.jl")
 
-function main()
-    @info "Starting pipeline evaluation..."
-    args = parse_commandline()
 
-    _, pattern, penalty, instance_id, _ = split(args["solution_path"], "/")
-    pattern = convert(String, pattern)
-    penalty_inv = parse(Int, split(penalty, "_")[2])
-    instance_id = convert(String, instance_id)
+@info "Starting pipeline evaluation..."
+args = parse_commandline()
 
-    instance = IRPInstance()
-    readInstance("instances/"*instance_id*".json", pattern, instance; penalty_inv=penalty_inv);
+milp_builder = model_definition(;milp_solver=args["milp_solver"], silent=args["silent_solver"])
 
-    max_evaluation_horizon = maximum([length(evaluation_demand) for evaluation_demand in values(instance.demands_test)])
-    args["evaluation_horizon"] <= max_evaluation_horizon || error("Evaluation horizon exceeds the number of samples in the evaluation demand of the instance.")
+_, pattern, penalty, instance_id, _ = split(args["solution_path"], "/")
+pattern = convert(String, pattern)
+penalty_inv = parse(Int, split(penalty, "_")[2])
+instance_id = convert(String, instance_id)
 
-    @info "Solution path: $(args["solution_path"])"
-    @info "Evaluation horizon: $(args["evaluation_horizon"]) periods"  
+instance = IRPInstance()
+readInstance("instances/"*instance_id*".json", pattern, instance; penalty_inv=penalty_inv);
 
-    horizon = args["evaluation_horizon"]
-    data = JSON.parsefile(realpath("training/solutions/"*args["solution_path"]))
+max_evaluation_horizon = maximum([length(evaluation_demand) for evaluation_demand in values(instance.demands_test)])
+args["evaluation_horizon"] <= max_evaluation_horizon || error("Evaluation horizon exceeds the number of samples in the evaluation demand of the instance.")
 
-    demand_quantiles = FloatFromAny(data["pctsp"]["settings"]["demand_quantiles"])
-    look_ahead = data["pctsp"]["settings"]["look_ahead"]
+@info "Solution path: $(args["solution_path"])"
+@info "Evaluation horizon: $(args["evaluation_horizon"]) periods"  
 
-    weights = data["pctsp"][string(data["pctsp"]["best_iteration"])]["weights"]
+horizon = args["evaluation_horizon"]
+data = JSON.parsefile(realpath("training/solutions/"*args["solution_path"]))
 
-    φ_w, _ = build_stat_model(demand_quantiles, look_ahead; nb_features=instance.nb_features, weights=weights);
+demand_quantiles = FloatFromAny(data["pctsp"]["settings"]["demand_quantiles"])
+look_ahead = data["pctsp"]["settings"]["look_ahead"]
 
-    benchmark_start = now()
-    x_val, holding_costs, stockout_costs, routing_costs, _ = evaluate_pctsp(φ_w, instance; demand="test", 
-        demand_quantiles=demand_quantiles, look_ahead=look_ahead, evaluation_horizon=horizon)
+weights = data["pctsp"][string(data["pctsp"]["best_iteration"])]["weights"]
 
-    total_costs = routing_costs + stockout_costs + holding_costs
+φ_w, _ = build_stat_model(demand_quantiles, look_ahead; nb_features=instance.nb_features, weights=weights);
 
-    inference_time = (now() - benchmark_start) / Millisecond(1000)
+benchmark_start = now()
+x_val, holding_costs, stockout_costs, routing_costs, _ = evaluate_pctsp(φ_w, instance; demand="test", 
+    demand_quantiles=demand_quantiles, look_ahead=look_ahead, evaluation_horizon=horizon)
 
-    # Round costs to two decimal places for printing
-    routing_costs_rounded = round(routing_costs, digits=2)
-    stockout_costs_rounded = round(stockout_costs, digits=2)
-    holding_costs_rounded = round(holding_costs, digits=2)
-    total_costs_rounded = round(total_costs, digits=2)
-    println("-----")
-    @info "Routing costs: $routing_costs_rounded"
-    @info "Stock-out costs: $stockout_costs_rounded"
-    @info "Holding costs: $holding_costs_rounded"
-    println("-----")
-    @info "Total costs: $total_costs_rounded"
-    @info "Inference time: $inference_time seconds"
-end
+total_costs = routing_costs + stockout_costs + holding_costs
 
-main() 
+inference_time = (now() - benchmark_start) / Millisecond(1000)
+
+# Round costs to two decimal places for printing
+routing_costs_rounded = round(routing_costs, digits=2)
+stockout_costs_rounded = round(stockout_costs, digits=2)
+holding_costs_rounded = round(holding_costs, digits=2)
+total_costs_rounded = round(total_costs, digits=2)
+println("-----")
+@info "Routing costs: $routing_costs_rounded"
+@info "Stock-out costs: $stockout_costs_rounded"
+@info "Holding costs: $holding_costs_rounded"
+println("-----")
+@info "Total costs: $total_costs_rounded"
+@info "Inference time: $inference_time seconds"

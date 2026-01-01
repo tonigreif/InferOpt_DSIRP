@@ -1,4 +1,5 @@
 using Gurobi
+using HiGHS
 using JuMP
 using Distributions
 using Statistics

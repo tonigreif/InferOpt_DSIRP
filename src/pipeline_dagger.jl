@@ -1,7 +1,8 @@
-using InferOpt
+using InferOpt: GeneralizedMaximizer, PerturbedAdditive, FenchelYoungLoss
 using ProgressMeter
 using Flux
 using Gurobi
+using HiGHS
 using JuMP
 using Distributions
 using Statistics
@@ -21,6 +22,9 @@ include("pctsp.jl")
     nb_outer_epochs::Int=150
     nb_inner_epochs::Int=50
     nb_iterations::Int=20
+    alpha_0::Float64=1.0
+    alpha_decay::Float64=0.05
+    alpha_min::Float64=0.1
     nb_keep_epochs::Int=10
     portion_keep_epochs::Float64=0.5
     early_stopping::Int=5
@@ -43,8 +47,12 @@ function run_pipeline(patterns::Vector{String}, penalties::Vector{Int}, instance
     (; nb_outer_epochs, nb_inner_epochs, nb_iterations,
         nb_keep_epochs, portion_keep_epochs, early_stopping, nb_scenarios,
         lr_start, fyl_samples, fyl_epsilon, look_ahead, demand_quantiles,
-        load_model, create_model) = settings
+        load_model, create_model, alpha_0, alpha_decay, alpha_min) = settings
     
+    α_min = alpha_min
+    α_0 = alpha_0
+    α_decay = alpha_decay
+            
     co_problem = "pctsp"
     if patterns[1]=="contextual"
         nb_features = 8
@@ -113,8 +121,8 @@ function run_pipeline(patterns::Vector{String}, penalties::Vector{Int}, instance
         end
     end
     
-    generalized_maximizer=GeneralizedMaximizer(pctsp, single_g, single_h)
-    loss=FenchelYoungLoss(PerturbedAdditive(generalized_maximizer; ε=fyl_epsilon, nb_samples=fyl_samples))
+    generalized_maximizer = GeneralizedMaximizer(pctsp, single_g, single_h)
+    loss = FenchelYoungLoss(PerturbedAdditive(generalized_maximizer; ε=fyl_epsilon, nb_samples=fyl_samples))
     flux_loss = sample -> loss(φ_w(sample.feature_array), sample.label[:,:,1]; sample=sample)
 
     # Initalize statistical model (during first iteration)       
@@ -153,25 +161,62 @@ function run_pipeline(patterns::Vector{String}, penalties::Vector{Int}, instance
         current_samples = []
         previous_samples = previous_samples[max(1, end-(nb_scenarios*nb_iterations*nb_keep_epochs)+1):end]
         # Build the training set on a diverse set of states and scenarios (nb_scenarios different scenarios for each state)
+        
+        # Compute alpha with minimum threshold
+        α = max(α_min, α_0 * exp(-α_decay * e_outer))
+        println("Current α = $(round(α, digits=3))")
+        
         for p in 1:nb_iterations
             # State transition
             state_transition_start = now()
+            
+            # Policy selection (mixture)
+            α_mixture = rand()
+              
             for idx in keys(instance_dict)
                 if p==1
                     demand_samples_dict[idx] = Dict(i => rand(instance_dict[idx].sample_demands[i], problem_dict[idx].horizon) for i in indices_dict[idx].V_cus) 
                 end
-                if nb_features>0
-                    contextual_features = Dict(k => Dict(i => vec(convert(Vector{Float64}, values(demand_samples_dict[idx][i][k]["features"]))) for i in indices_dict[idx].V_cus) for k in 1:look_ahead)
+
+                # Policy selection (mixture)
+                if α_mixture < α              
+                    println("Anticipative policy in iteration $(p) with current α = $(round(α, digits=3)) and α_mixture $(α_mixture)")
+                    
+                    roll_problem = IRPProblem()
+                    roll_indices = IRPIndices()
+                    createProblem(roll_problem, instance_dict[idx]; horizon=look_ahead)
+                    createIndices(roll_indices, roll_problem)
+                    
+                    if nb_features>0
+                        roll_problem.demands = Dict(1 => Dict(i => [[y for (y,_) in sort([(sample["label"], sum((sample["features"] - demand_samples_dict[idx][i][p+k-1]["features"]).^2))
+                                                    for sample in demands_hist_dict[idx][i]], by=x->x[2])][1] for k in 1:look_ahead] for i in roll_indices.V_cus))
+                        
+                    else
+                        roll_problem.demands = Dict(1 => Dict(i => demands_hist_dict[idx][i][end-(look_ahead-1):end] for i in roll_indices.V_cus))
+                    end
+
+                    roll_problem.scenarios = 1
+                    roll_indices.S = collect(1:roll_problem.scenarios)
+                    x = sirp_solver(roll_problem, roll_indices)
+                    y = single_g(x[:,:,1])
+                    
                 else
-                    contextual_features = Dict{Int, Dict{Int, Vector{Float64}}}()
-                end
-                
-                sample = createSample(instance_dict[idx], indices_dict[idx], start_inventory_dict[idx], demands_hist_dict[idx], Int[];
+                    println("Current policy")
+                    
+                    if nb_features>0
+                        contextual_features = Dict(k => Dict(i => vec(convert(Vector{Float64}, values(demand_samples_dict[idx][i][k]["features"]))) for i in indices_dict[idx].V_cus) for k in 1:look_ahead)
+                    else
+                        contextual_features = Dict{Int, Dict{Int, Vector{Float64}}}()
+                    end
+                    
+                    sample = createSample(instance_dict[idx], indices_dict[idx], start_inventory_dict[idx], demands_hist_dict[idx], Int[];
                     contextual_features=contextual_features, demand_quantiles=demand_quantiles, look_ahead=look_ahead, nb_features=nb_features)
 
-                θ = φ_w(sample.feature_array)
-                x = pctsp(θ; sample, verbose=false)
-                y = single_g(x[:,:,1])
+                    θ = φ_w(sample.feature_array)
+                    x = pctsp(θ; sample)
+                    y = single_g(x[:,:,1])
+                end
+                    
 
                 for i in indices_dict[idx].V_cus
                     true_demand = if (nb_features>0) demand_samples_dict[idx][i][1]["label"] else demand_samples_dict[idx][i][1] end
@@ -179,11 +224,12 @@ function run_pipeline(patterns::Vector{String}, penalties::Vector{Int}, instance
 
                     demands_hist_dict[idx][i][1:end-1] = demands_hist_dict[idx][i][2:end]
                     demands_hist_dict[idx][i][end] = true_demand
-                    
+
                     demand_samples_dict[idx][i][1:end-1] = demand_samples_dict[idx][i][2:end]
                     demand_samples_dict[idx][i][end] = rand(instance_dict[idx].sample_demands[i])  
                 end 
-            end
+            end                              
+                
             solution[co_problem]["seconds"]["state transition"] += ((now() - state_transition_start)/Millisecond(1000))
 
             # Sample generation
@@ -230,7 +276,7 @@ function run_pipeline(patterns::Vector{String}, penalties::Vector{Int}, instance
         solution[co_problem][string(e_outer)]["loss"] = l
         sum_total_cost = 0.
         for idx in keys(instance_dict)
-            for scenario in 1:5
+            for scenario in 1:nb_scenarios
                 _, inv_cost, penalty_cost, routing_cost, _ = evaluate_pctsp(φ_w, instance_dict[idx];
                 demand="eval", scenario=scenario, nb_features=nb_features, demand_quantiles=demand_quantiles, look_ahead=look_ahead, evaluation_horizon=10)      
                 sum_total_cost +=  inv_cost + penalty_cost + routing_cost

@@ -40,7 +40,7 @@ function evaluate_pctsp(φ_w, instance::IRPInstance; demand="test", scenario=1, 
         sample = createSample(instance, eval_indices, eval_problem.start_inventory, demands_hist, Int[];
             contextual_features=contextual_features, look_ahead=look_ahead, nb_features=instance.nb_features, kwargs...)
         θ = φ_w(sample.feature_array)
-        x = pctsp(θ; sample, verbose=false)
+        x = pctsp(θ; sample)
         x_val[:,:,p] = x
         y = single_g(x)
 

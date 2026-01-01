@@ -216,7 +216,7 @@ function run_pipeline(patterns::Vector{String}, penalties::Vector{Int}, instance
         sum_total_cost = 0.
 
         for idx in keys(instance_dict)
-            for scenario in 1:5
+            for scenario in 1:nb_scenarios
                 _, inv_cost, penalty_cost, routing_cost, _ = evaluate_pctsp(φ_w, instance_dict[idx];
                 demand="eval", scenario=scenario, nb_features=nb_features, demand_quantiles=demand_quantiles, look_ahead=look_ahead, evaluation_horizon=10)      
                 sum_total_cost +=  inv_cost + penalty_cost + routing_cost

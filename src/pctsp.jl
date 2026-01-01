@@ -13,7 +13,7 @@ function remove_cycles!(model, x, y)
 end
 
 
-function pctsp(θ::Vector{Float64}; sample::IRPSample, model_builder=grb_model, verbose=false)
+function pctsp(θ::Vector{Float64}; sample::IRPSample, model_builder=milp_builder)
 
     (; n, distances, max_inventory, start_inventory, v_cap) = sample
     

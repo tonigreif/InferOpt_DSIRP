@@ -4,9 +4,10 @@ function fix_index(i::Int, indices::IRPIndices)
 end
 
 
-function sirp_solver(problem::IRPProblem, indices::IRPIndices; obj=false)
+function sirp_solver(problem::IRPProblem, indices::IRPIndices; model_builder=milp_builder, obj=false)
+    
     # 1. MODEL
-    m = grb_model()
+    m = model_builder()
 
     # 2. VARIABLES
     @variable(m, z[s=indices.S, i=indices.V_aug, t=indices.H], Bin)
